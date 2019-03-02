@@ -1,11 +1,10 @@
 #ifndef MYUDP_H
 #define MYUDP_H
-
-
 #include <QObject>
 #include <QUdpSocket>
 #include <QDebug>
 #include <QNetworkInterface>
+#include <client.h>
 
 class MyUDP : public QObject
 {
@@ -17,6 +16,8 @@ public slots:
 
 private:
  QUdpSocket *socket;
+ QByteArray ba;
+ Client client;
 };
 
 #endif // MYUDP_H

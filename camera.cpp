@@ -1,79 +1,58 @@
 #include "camera.h"
-
+#include <opencv2/core.hpp>
+#include <opencv2/opencv.hpp>
+#include <opencv2/imgcodecs.hpp>
+#include <raspicam/raspicam_still_cv.h>
+#include <opencv2/opencv.hpp>
 using namespace cv;
+using namespace std;
+raspicam::RaspiCam_Still_Cv Camera;
 
-void *display(void *);
-
-int capDev = 0;
-
-VideoCapture cap(capDev);
-
-void Camera::capture(){
-    int localSocket, remoteSocket, port = 4097;
-
-        struct  sockaddr_in localAddr,remoteAddr;
-
-        pthread_t thread_id;
-
-        int addrLen = sizeof(struct sockaddr_in);
-
-        localSocket = socket(AF_INET , SOCK_STREAM , 0);
-        if (localSocket == -1){
-             perror("socket() call failed!!");
-        }
-
-        localAddr.sin_family = AF_INET;
-        localAddr.sin_addr.s_addr = INADDR_ANY;
-        localAddr.sin_port = htons( port );
-
-        if( bind(localSocket,(struct sockaddr *)&localAddr , sizeof(localAddr)) < 0) {
-             perror("Can't bind() socket");
-             exit(1);
-        }
-
-        //Listening
-        listen(localSocket , 3);
-
-        std::cout <<  "Waiting for connections...\n"
-                  <<  "Server Port:" << port << std::endl;
-
-        //accept connection from an incoming client
-        while(1){
-
-
-         remoteSocket = accept(localSocket, (struct sockaddr *)&remoteAddr, (socklen_t*)&addrLen);
-          //std::cout << remoteSocket<< "32"<< std::endl;
-        if (remoteSocket < 0) {
-            perror("accept failed!");
-            exit(1);
-        }
-        std::cout << "Connection accepted" << std::endl;
-         pthread_create(&thread_id,NULL,display,&remoteSocket);
-         std::cout << "Quiting";
-
-        }
+Mat3b getMean(const vector<Mat3b>& images){
+    if (images.empty()) return Mat3b();
+    Mat m(images[0].rows,images[0].cols,CV_64FC3);
+    m.setTo(Scalar(0,0,0,0));
+    Mat temp;
+    for(int i =0;i<images.size();++i){
+        images[i].convertTo(temp,CV_64FC3);
+        m+=temp;
+    }
+    m.convertTo(m,CV_8U,1./images.size());
+    return m;
 }
-
-void *display(void *ptr){
-    int socket = *(int *)ptr;
+void Camera::capture(){
     Mat img;
     int imgSize;
     int bytes = 0;
     Size size(640,480);
 
-    while(1) {
+    raspicam::RaspiCam_Still_Cv Camera;
+    //Camera.set(CV_CAP_PROP_FORMAT, CV_8UC3);
+    Camera.set(cv::CAP_PROP_FRAME_WIDTH,2592);
+    Camera.set(cv::CAP_PROP_FRAME_HEIGHT,1944);
+
+    //for(int i = 0; i< 2; ++i){
+    Camera.open();
+    sleep(1);
+
+
+        Camera.grab();
+
+
+
             /* get a frame from camera */
-                cap >> img;
+                Camera.retrieve(img);
+                //imwrite("/home/pi/Desktop/test1.jpg",img);
 
-                resize(img,img,size);
+                //resize(img,img,size);
 
-                imgSize = img.total()*img.elemSize();
-
-                //send processed image
-                if ((bytes = send(socket, img.data, imgSize, 0)) < 0){
-                     std::cerr << "bytes = " << bytes << std::endl;
-                     break;
-                }
-    }
+                //imgSize = img.total()*img.elemSiz
+                Camera.release();
+//}
+    //Mat3b meanImage = getMean(images);
+    imwrite("image.png",img);
+    imwrite("/home/pi/Desktop/image.png",img);
+    return;
 
 }
+
